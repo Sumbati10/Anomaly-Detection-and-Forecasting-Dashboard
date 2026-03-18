@@ -2,10 +2,17 @@ from __future__ import annotations
 
 import os
 
+import sys
+from pathlib import Path
+
 import pandas as pd
 import plotly.graph_objects as go
 import requests
 import streamlit as st
+
+_REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
 
 from src.features.feature_engineering import build_feature_frame
 from src.models.anomaly import train_isolation_forest
