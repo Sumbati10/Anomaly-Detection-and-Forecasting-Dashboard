@@ -19,7 +19,12 @@ from src.models.anomaly import train_isolation_forest
 from src.models.forecast import train_sarimax
 from src.services.pipeline import load_training_data
 
-API_URL = os.getenv("API_URL", "http://127.0.0.1:8000")
+_DEFAULT_API_URL = ""
+try:
+    _DEFAULT_API_URL = st.secrets.get("API_URL", "")
+except Exception:
+    _DEFAULT_API_URL = ""
+API_URL = os.getenv("API_URL", _DEFAULT_API_URL)
 
 st.set_page_config(page_title="Anomaly & Forecast Dashboard", layout="wide")
 
@@ -27,7 +32,8 @@ st.title("Anomaly Detection and Forecasting Dashboard")
 
 with st.sidebar:
     st.header("Settings")
-    api_url = st.text_input("API URL", API_URL)
+    use_api = st.checkbox("Use API", value=bool(API_URL))
+    api_url = st.text_input("API URL", API_URL, disabled=not use_api)
     horizon = st.slider("Forecast horizon (days)", min_value=7, max_value=120, value=30, step=1)
     limit = st.slider("Anomaly points to display", min_value=200, max_value=8000, value=2000, step=100)
 
@@ -79,11 +85,18 @@ col1, col2 = st.columns(2)
 
 with col1:
     st.subheader("Anomalies")
-    try:
-        anom = _fetch_anomalies_from_api(api_url=api_url, limit=limit)
-        anom["ds"] = pd.to_datetime(anom["ds"])
-    except Exception as e:
-        st.info("API not reachable; running in local mode inside Streamlit.")
+    if use_api and api_url:
+        try:
+            anom = _fetch_anomalies_from_api(api_url=api_url, limit=limit)
+            anom["ds"] = pd.to_datetime(anom["ds"])
+        except Exception as e:
+            st.info("API not reachable; running in local mode inside Streamlit.")
+            try:
+                anom = _compute_anomalies_locally(limit=limit)
+            except Exception as e2:
+                st.error(f"Failed to compute anomalies locally: {e2}")
+                anom = pd.DataFrame(columns=["ds", "y", "anomaly_score", "is_anomaly"])
+    else:
         try:
             anom = _compute_anomalies_locally(limit=limit)
         except Exception as e2:
@@ -109,11 +122,18 @@ with col1:
 
 with col2:
     st.subheader("Forecast")
-    try:
-        fc = _fetch_forecast_from_api(api_url=api_url, horizon=horizon)
-        fc["ds"] = pd.to_datetime(fc["ds"])
-    except Exception as e:
-        st.info("API not reachable; running forecast locally inside Streamlit.")
+    if use_api and api_url:
+        try:
+            fc = _fetch_forecast_from_api(api_url=api_url, horizon=horizon)
+            fc["ds"] = pd.to_datetime(fc["ds"])
+        except Exception as e:
+            st.info("API not reachable; running forecast locally inside Streamlit.")
+            try:
+                fc = _compute_forecast_locally(horizon=horizon)
+            except Exception as e2:
+                st.error(f"Failed to compute forecast locally: {e2}")
+                fc = pd.DataFrame(columns=["ds", "yhat", "yhat_lower", "yhat_upper"])
+    else:
         try:
             fc = _compute_forecast_locally(horizon=horizon)
         except Exception as e2:
