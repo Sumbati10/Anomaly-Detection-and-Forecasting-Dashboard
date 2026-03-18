@@ -1,5 +1,9 @@
 # Anomaly Detection and Forecasting Dashboard
 
+
+
+![Dashboard Screenshot](Screenshot%20From%202026-03-18%2016-15-02.png)
+
 ## Problem statement
 Build a small production-style system that:
 
